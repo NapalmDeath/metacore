@@ -1,16 +1,20 @@
-from typing import Dict
+from __future__ import annotations
+from typing import Dict, TYPE_CHECKING
 
 from bson import ObjectId
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from core.common import MetagraphEntityType, MetagraphEntity, PersistableMGEntity
-from core.entities import Metavertex, Metaedge
+from core.entities.common import MetagraphEntityType, MetagraphEntity, PersistableMGEntity
+
+if TYPE_CHECKING:
+    from core.entities.edge import BaseMetaedge
+    from core.entities.vertex import BaseMetavertex
 
 
 class Metagraph:
-    vertices: Dict[ObjectId, Metavertex] = {}
-    edges: Dict[ObjectId, Metaedge] = {}
+    vertices: Dict[ObjectId, BaseMetavertex] = {}
+    edges: Dict[ObjectId, BaseMetaedge] = {}
 
     def save_entities(self, *entities: MetagraphEntity):
         for e in entities:
@@ -49,4 +53,5 @@ class MetagraphPersist(Metagraph):
 
     def load_all(self):
         v = self.vertices_collection.find()
-        print(v)
+
+        print(list(v))

@@ -1,7 +1,7 @@
 from typing import TypedDict
 from pymongo import MongoClient
 
-from core.Metagraph import MetagraphPersist
+from core.metagraph import MetagraphPersist
 
 
 class MetacoreConfig(TypedDict):

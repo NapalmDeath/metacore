@@ -1,4 +1,4 @@
-from core.Metacore import Metacore, MetacoreConfig
+from core.metacore import Metacore, MetacoreConfig
 
 if __name__ == '__main__':
     metacore = Metacore(MetacoreConfig(

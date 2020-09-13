@@ -1,9 +1,13 @@
-from abc import ABCMeta, abstractmethod, ABC
+from __future__ import annotations
+from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from bson import ObjectId
 from pymongo.collection import Collection
+
+if TYPE_CHECKING:
+    from core.metagraph import Metagraph
 
 
 class MetagraphEntityType(Enum):
@@ -20,6 +24,8 @@ class MetagraphEntity:
     _temp_id: ObjectId
     entity_type: MetagraphEntityType
     name: str
+
+    _metagraph: Metagraph
 
     @property
     def id(self) -> ObjectId or None:
@@ -59,7 +65,10 @@ class Persistable(Serializable, metaclass=ABCMeta):
 
 
 class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
-    pass
+    @staticmethod
+    @abstractmethod
+    def load(json: Any):
+        pass
 
 
 class Attributes(Serializable):

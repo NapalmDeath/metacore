@@ -1,5 +1,5 @@
 # [х] Сетап
-# [] Создание всех элементов
+# [x] Создание всех элементов
 #   [] Добавить в метаребра метавершины
 # [] Загрузка из базы
 # [] Удаление элементов
@@ -11,7 +11,7 @@
 # [] Алгоритм запуска агентов
 
 
-from core.Metacore import Metacore, MetacoreConfig
+from core.metacore import Metacore, MetacoreConfig
 from core.entities import Metaedge, Metavertex
 
 if __name__ == '__main__':
