@@ -1,31 +1,29 @@
 from typing import List
-
-from bson import ObjectId
-
-from core.common import Serializable, MetagraphEntity, Attributes
+from core.common import PersistableMGEntity, MetagraphEntity, MetagraphEntityType, Attributes
 
 
-class Metavertex(Serializable):
-    entity_type = MetagraphEntity.VERTEX
+class BaseMetavertex(MetagraphEntity):
+    entity_type = MetagraphEntityType.VERTEX
+    inner_edges: List["BaseMetaedge"] = []
+    outer_edges: List["BaseMetaedge"] = []
+    children: List["BaseMetavertex"] = []
 
-    name: str
-    inner_edges: List["Metaedge"] = []
-    outer_edges: List["Metaedge"] = []
-    children: List["Metavertex"] = []
+    def __init__(self, name: str) -> None:
+        super().__init__()
 
-    def __init__(self, name: str, _id: ObjectId = None) -> None:
         self.name = name
-        self._id = _id
 
-    def add_child(self, child: "Metavertex"):
+    def add_child(self, child: "BaseMetavertex"):
         self.children.append(child)
 
-    def add_edge(self, edge: "Metaedge"):
+    def add_edge(self, edge: "BaseMetaedge"):
         if self == edge.source:
             self.outer_edges.append(edge)
         if self == edge.dest:
             self.inner_edges.append(edge)
 
+
+class Metavertex(BaseMetavertex, PersistableMGEntity):
     def serialize(self):
         return {
             "name": self.name,
@@ -33,15 +31,17 @@ class Metavertex(Serializable):
         }
 
 
-class Metaedge(Serializable):
-    entity_type = MetagraphEntity.EDGE
+class BaseMetaedge(MetagraphEntity):
+    entity_type = MetagraphEntityType.EDGE
 
-    name: str
     attrs: Attributes
-    source: Metavertex
-    dest: Metavertex
+    source: BaseMetavertex
+    dest: BaseMetavertex
 
-    def __init__(self, name: str, source: Metavertex, dest: Metavertex, **attrs):
+    # Вершина, хранящая данные
+    inner_metavertex: "MetaedgeMetavertex"
+
+    def __init__(self, name: str, source: BaseMetavertex, dest: BaseMetavertex, **attrs):
         super().__init__()
 
         self.name = name
@@ -58,6 +58,20 @@ class Metaedge(Serializable):
 
         return self.attrs[item]
 
+
+class MetaedgeMetavertex(Metavertex):
+    parent_edge: "Metaedge"
+
+    def serialize(self):
+        base_data = super().serialize()
+
+        return {
+            **base_data,
+            "parent_edge": self.parent_edge.id
+        }
+
+
+class Metaedge(BaseMetaedge, PersistableMGEntity):
     def serialize(self) -> dict:
         return {
             "name": self.name,

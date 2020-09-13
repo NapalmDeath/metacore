@@ -1,7 +1,7 @@
 from typing import TypedDict
 from pymongo import MongoClient
 
-from core.Metagraph import Metagraph
+from core.Metagraph import MetagraphPersist
 
 
 class MetacoreConfig(TypedDict):
@@ -12,15 +12,15 @@ class MetacoreConfig(TypedDict):
 class Metacore:
     db: MongoClient = None
     config: MetacoreConfig
-    metagraph: Metagraph
+    metagraph: MetagraphPersist
 
     def __init__(self, config: MetacoreConfig):
         self.config = config
         pass
 
-    def initialize(self) -> Metagraph:
+    def initialize(self) -> MetagraphPersist:
         client = MongoClient(self.config["db_connect_url"])
         self.db = client[self.config["db_name"]]
-        self.metagraph = Metagraph(self.db)
+        self.metagraph = MetagraphPersist(self.db)
 
         return self.metagraph

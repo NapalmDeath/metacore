@@ -1,11 +1,12 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod, ABC
 from enum import Enum
 from typing import Any
 
 from bson import ObjectId
+from pymongo.collection import Collection
 
 
-class MetagraphEntity(Enum):
+class MetagraphEntityType(Enum):
     VERTEX = 'vertex'
     EDGE = 'edge'
 
@@ -15,14 +16,27 @@ class EdgeType(Enum):
     OUTER = 'outer'
 
 
-class Serializable(metaclass=ABCMeta):
-    entity_type: MetagraphEntity
-
-    _id: ObjectId or None = None
+class MetagraphEntity:
+    _temp_id: ObjectId
+    entity_type: MetagraphEntityType
+    name: str
 
     @property
     def id(self) -> ObjectId or None:
-        return self._id
+        return self._temp_id
+
+    def __init__(self) -> None:
+        self._temp_id = ObjectId()
+
+
+class Serializable(metaclass=ABCMeta):
+    @abstractmethod
+    def serialize(self) -> dict:
+        pass
+
+
+class Persistable(Serializable, metaclass=ABCMeta):
+    _id: ObjectId or None = None
 
     @property
     def created(self) -> bool:
@@ -31,9 +45,21 @@ class Serializable(metaclass=ABCMeta):
     def set_id(self, _id: ObjectId):
         self._id = _id
 
-    @abstractmethod
-    def serialize(self) -> dict:
-        pass
+    def save(self, collection: Collection):
+        if not self.created:
+            result = collection.insert_one(self.serialize())
+            self.set_id(result.inserted_id)
+            return result
+        else:
+            return collection.update_one({
+                "_id": self._id
+            }, {
+                "$set": self.serialize()
+            })
+
+
+class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
+    pass
 
 
 class Attributes(Serializable):
@@ -57,6 +83,3 @@ class Attributes(Serializable):
 
     def serialize(self) -> dict:
         return self.values
-
-
-
