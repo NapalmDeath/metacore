@@ -21,18 +21,19 @@ class EdgeType(Enum):
 
 
 class MetagraphEntity:
-    _temp_id: ObjectId
+    temp_id: ObjectId
     entity_type: MetagraphEntityType
     name: str
 
+    @property
+    def id(self) -> ObjectId:
+        return self.temp_id
+
     _metagraph: Metagraph
 
-    @property
-    def id(self) -> ObjectId or None:
-        return self._temp_id
-
-    def __init__(self) -> None:
-        self._temp_id = ObjectId()
+    def __init__(self, name: str = '') -> None:
+        self.temp_id = ObjectId()
+        self.name = name
 
 
 class Serializable(metaclass=ABCMeta):
@@ -65,9 +66,13 @@ class Persistable(Serializable, metaclass=ABCMeta):
 
 
 class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
+    @property
+    def id(self) -> ObjectId:
+        return self._id or self.temp_id
+
     @staticmethod
     @abstractmethod
-    def load(json: Any):
+    def load(json: Any, mg: Metagraph):
         pass
 
 

@@ -21,6 +21,7 @@ class Metacore:
     def initialize(self) -> MetagraphPersist:
         client = MongoClient(self.config["db_connect_url"])
         self.db = client[self.config["db_name"]]
+
         self.metagraph = MetagraphPersist(self.db)
 
         return self.metagraph
