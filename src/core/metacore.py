@@ -13,15 +13,19 @@ class Metacore:
     db: MongoClient = None
     config: MetacoreConfig
     metagraph: MetagraphPersist
+    client: MongoClient
 
     def __init__(self, config: MetacoreConfig):
         self.config = config
         pass
 
     def initialize(self) -> MetagraphPersist:
-        client = MongoClient(self.config["db_connect_url"])
-        self.db = client[self.config["db_name"]]
+        self.client = MongoClient(self.config["db_connect_url"])
+        self.db = self.client[self.config["db_name"]]
 
         self.metagraph = MetagraphPersist(self.db)
 
         return self.metagraph
+
+    def drop(self):
+        self.client.drop_database(self.config["db_name"])

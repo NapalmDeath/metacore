@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING, TypedDict, Dict
+from typing import TYPE_CHECKING, TypedDict, Dict, cast
 
 from bson import ObjectId
 
@@ -7,7 +7,7 @@ from core.entities.common import MetagraphEntity, MetagraphEntityType, Attribute
 
 if TYPE_CHECKING:
     from core.metagraph import Metagraph
-    from core.entities.vertex import BaseMetavertex
+    from core.entities.vertex import BaseMetavertex, Metavertex
 
 
 class BaseMetaedge(MetagraphEntity):
@@ -27,11 +27,9 @@ class BaseMetaedge(MetagraphEntity):
         self.source.add_edge(self)
         self.dest.add_edge(self)
 
-    def __getattr__(self, item):
-        if not self.attrs:
-            raise AttributeError
-
-        return self.attrs[item]
+    def delete(self):
+        self.source.drop_edge(self)
+        self.dest.drop_edge(self)
 
 
 class MetaedgeType(TypedDict):
@@ -43,6 +41,13 @@ class MetaedgeType(TypedDict):
 
 
 class Metaedge(BaseMetaedge, PersistableMGEntity):
+    def delete(self):
+        super(Metaedge, self).delete()
+
+        if self.mg:
+            self.mg.save_entities(cast('Metavertex', self.source), cast('Metavertex', self.dest))
+            self.delete_from(self.mg.edges_collection)
+
     def serialize(self) -> dict:
         return {
             "name": self.name,

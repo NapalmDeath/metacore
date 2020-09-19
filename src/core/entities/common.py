@@ -7,7 +7,7 @@ from bson import ObjectId
 from pymongo.collection import Collection
 
 if TYPE_CHECKING:
-    from core.metagraph import Metagraph
+    from core.metagraph import Metagraph, MetagraphPersist
 
 
 class MetagraphEntityType(Enum):
@@ -34,6 +34,9 @@ class MetagraphEntity:
     def __init__(self, name: str = '') -> None:
         self.temp_id = ObjectId()
         self.name = name
+
+    def delete(self):
+        pass
 
 
 class Serializable(metaclass=ABCMeta):
@@ -64,8 +67,25 @@ class Persistable(Serializable, metaclass=ABCMeta):
                 "$set": self.serialize()
             })
 
+    def delete_from(self, collection: Collection):
+        return collection.delete_one({
+            "_id": self._id
+        })
+
+    @staticmethod
+    def delete_many_from(collection: Collection, *ids: ObjectId):
+        return collection.delete_one({
+            "_id": {"$in": ids}
+        })
+
 
 class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
+    mg: MetagraphPersist = None
+
+    def set_mg(self, mg: MetagraphPersist):
+        self.mg = mg
+        return self
+
     @property
     def id(self) -> ObjectId:
         return self._id or self.temp_id

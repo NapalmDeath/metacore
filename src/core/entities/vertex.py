@@ -14,6 +14,7 @@ class BaseMetavertex(MetagraphEntity):
     inner_edges: List[BaseMetaedge]
     outer_edges: List[BaseMetaedge]
     children: List[BaseMetavertex]
+    parent: BaseMetavertex or None
 
     def __init__(self, name: str) -> None:
         super().__init__(name)
@@ -21,8 +22,10 @@ class BaseMetavertex(MetagraphEntity):
         self.children = []
         self.inner_edges = []
         self.outer_edges = []
+        self.parent = None
 
     def add_child(self, child: BaseMetavertex):
+        child.parent = self
         self.children.append(child)
 
     def add_edge(self, edge: BaseMetaedge):
@@ -30,6 +33,16 @@ class BaseMetavertex(MetagraphEntity):
             self.outer_edges.append(edge)
         if self == edge.dest:
             self.inner_edges.append(edge)
+
+    def drop_edge(self, edge: BaseMetaedge):
+        self.inner_edges = list(filter(lambda e: e.id != edge.id, self.inner_edges))
+        self.outer_edges = list(filter(lambda e: e.id != edge.id, self.outer_edges))
+
+    def delete(self):
+        for edge in self.inner_edges:
+            edge.delete()
+        for edge in self.outer_edges:
+            edge.delete()
 
 
 class MetavertexType(TypedDict):
@@ -41,12 +54,23 @@ class MetavertexType(TypedDict):
 
 
 class Metavertex(BaseMetavertex, PersistableMGEntity):
+    def delete(self):
+        edges_to_delete = [*self.inner_edges, *self.outer_edges]
+
+        for edge in edges_to_delete:
+            edge.delete()
+
+        if self.mg:
+            self.delete_many_from(self.mg.edges_collection, *map(lambda e: e.id, edges_to_delete))
+            self.delete_from(self.mg.vertices_collection)
+
     def serialize(self):
         return {
             "name": self.name,
             "inner_edges": list(map(lambda e: e.id, self.inner_edges)),
             "outer_edges": list(map(lambda e: e.id, self.outer_edges)),
-            "children": list(map(lambda c: c.id, self.children))
+            "children": list(map(lambda c: c.id, self.children)),
+            "parent": self.parent.id if self.parent else None
         }
 
     @staticmethod
@@ -57,5 +81,6 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         for child_id in json["children"]:
             child = mg.vertices[child_id]
             mv.add_child(child)
+            child.parent = mv
 
         return mv

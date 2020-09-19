@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, TYPE_CHECKING
+from typing import Dict, TYPE_CHECKING, cast
 
 from bson import ObjectId
 from pymongo import MongoClient
@@ -8,7 +8,6 @@ from pymongo.collection import Collection
 from core.entities.common import MetagraphEntityType, MetagraphEntity, PersistableMGEntity
 from core.entities.vertex import Metavertex
 from core.entities.edge import Metaedge
-from core.utils.ObjectIdDict import ObjectIdDict
 
 if TYPE_CHECKING:
     from core.entities.vertex import BaseMetavertex
@@ -16,13 +15,13 @@ if TYPE_CHECKING:
 
 
 class Metagraph:
-    vertices: ObjectIdDict[ObjectId, BaseMetavertex]
-    edges: ObjectIdDict[ObjectId, BaseMetaedge]
+    vertices: Dict[ObjectId, BaseMetavertex]
+    edges: Dict[ObjectId, BaseMetaedge]
 
     def __init__(self) -> None:
         super().__init__()
-        self.vertices = ObjectIdDict()
-        self.edges = ObjectIdDict()
+        self.vertices = {}
+        self.edges = {}
 
     def save_entities(self, *entities: MetagraphEntity):
         for e in entities:
@@ -34,6 +33,12 @@ class Metagraph:
     def save_entity(self, entity: MetagraphEntity):
         collection = self._get_entity_collection(entity.entity_type)
         collection[entity.id] = entity
+
+    def delete_entity(self, entity: MetagraphEntity):
+        collection = self._get_entity_collection(entity.entity_type)
+        del collection[entity.id]
+
+        entity.delete()
 
 
 class MetagraphPersist(Metagraph):
@@ -65,6 +70,15 @@ class MetagraphPersist(Metagraph):
             del collection[entity.temp_id]
 
         collection[entity.id] = entity
+
+        entity.set_mg(self)
+
+    def delete_entity(self, entity: PersistableMGEntity):
+        super().delete_entity(entity)
+
+    def register(self, *entities: MetagraphEntity):
+        for entity in entities:
+            super().save_entity(entity)
 
     def load_all(self):
         all_vertices = list(self.vertices_collection.find())

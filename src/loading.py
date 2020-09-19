@@ -8,6 +8,6 @@ if __name__ == '__main__':
 
     mg = metacore.initialize()
     mg.load_all()
-    print(mg.vertices, mg.edges)
+    print([v.id for v in mg.vertices.values()], [e.id for e in mg.edges.values()])
 
 
