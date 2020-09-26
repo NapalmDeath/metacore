@@ -32,11 +32,15 @@ class MetagraphEntity:
     _metagraph: Metagraph
 
     def __init__(self, name: str = '') -> None:
+        super().__init__()
         self.temp_id = ObjectId()
         self.name = name
 
     def delete(self):
         pass
+
+    def __str__(self) -> str:
+        return '{}, {}'.format(self.name, self.id)
 
 
 class Serializable(metaclass=ABCMeta):
@@ -47,15 +51,26 @@ class Serializable(metaclass=ABCMeta):
 
 class Persistable(Serializable, metaclass=ABCMeta):
     _id: ObjectId or None = None
+    dirty: bool
+    collection: Collection
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.dirty = True
 
     @property
     def created(self) -> bool:
         return self._id is not None
 
+    def set_dirty(self, dirty: bool = True) -> None:
+        self.dirty = dirty
+
     def set_id(self, _id: ObjectId):
         self._id = _id
 
-    def save(self, collection: Collection):
+    def save(self):
+        collection = self.collection
+
         if not self.created:
             result = collection.insert_one(self.serialize())
             self.set_id(result.inserted_id)
@@ -89,6 +104,10 @@ class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
     @property
     def id(self) -> ObjectId:
         return self._id or self.temp_id
+
+    def save(self):
+        super().save()
+        self.mg.drop_temp_entity(self)
 
     @staticmethod
     @abstractmethod

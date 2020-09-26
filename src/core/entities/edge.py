@@ -6,8 +6,8 @@ from bson import ObjectId
 from core.entities.common import MetagraphEntity, MetagraphEntityType, Attributes, PersistableMGEntity
 
 if TYPE_CHECKING:
-    from core.metagraph import Metagraph
-    from core.entities.vertex import BaseMetavertex, Metavertex
+    from core.metagraph import Metagraph, MetagraphPersist
+    from core.entities.vertex import BaseMetavertex
 
 
 class BaseMetaedge(MetagraphEntity):
@@ -41,12 +41,37 @@ class MetaedgeType(TypedDict):
 
 
 class Metaedge(BaseMetaedge, PersistableMGEntity):
+    def set_mg(self, mg: MetagraphPersist):
+        super().set_mg(mg)
+        self.collection = self.mg.edges_collection
+
     def delete(self):
         super(Metaedge, self).delete()
 
         if self.mg:
             self.mg.save_entities(cast('Metavertex', self.source), cast('Metavertex', self.dest))
             self.delete_from(self.mg.edges_collection)
+
+    def save(self):
+        if not self.dirty:
+            return
+
+        is_first_save = not self.created
+
+        super().save()
+        self.set_dirty(False)
+
+        if is_first_save:
+            source = cast("Metavertex", self.source)
+            dest = cast("Metavertex", self.dest)
+
+            was_changed_dependencies = not source.created or not dest.created
+
+            source.save()
+            dest.save()
+
+            if was_changed_dependencies:
+                super().save()
 
     def serialize(self) -> dict:
         return {
@@ -63,5 +88,7 @@ class Metaedge(BaseMetaedge, PersistableMGEntity):
 
         me = Metaedge(name=json["name"], source=source, dest=dest, **json["attrs"])
         me.set_id(json["_id"])
+
+        me.set_dirty(False)
 
         return me

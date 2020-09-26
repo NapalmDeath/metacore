@@ -60,10 +60,7 @@ class MetagraphPersist(Metagraph):
     def _get_db_collection(self, entity_type: MetagraphEntityType) -> Collection:
         return self.vertices_collection if entity_type == MetagraphEntityType.VERTEX else self.edges_collection
 
-    def save_entity(self, entity: PersistableMGEntity):
-        collection = self._get_db_collection(entity.entity_type)
-        entity.save(collection)
-
+    def drop_temp_entity(self, entity: PersistableMGEntity):
         collection = self._get_entity_collection(entity.entity_type)
 
         if entity.temp_id in collection:
@@ -71,7 +68,20 @@ class MetagraphPersist(Metagraph):
 
         collection[entity.id] = entity
 
+    def save_entity(self, entity: PersistableMGEntity):
         entity.set_mg(self)
+        entity.save()
+
+    def save_all(self):
+        dirty_vertices = list(filter(lambda x: x.dirty, self.vertices.values()))
+
+        for v in dirty_vertices:
+            self.save_entity(cast(PersistableMGEntity, v))
+
+        dirty_edges = list(filter(lambda x: x.dirty, self.edges.values()))
+
+        for e in dirty_edges:
+            self.save_entity(cast(PersistableMGEntity, e))
 
     def delete_entity(self, entity: PersistableMGEntity):
         super().delete_entity(entity)
@@ -79,6 +89,8 @@ class MetagraphPersist(Metagraph):
     def register(self, *entities: MetagraphEntity):
         for entity in entities:
             super().save_entity(entity)
+
+            cast(PersistableMGEntity, entity).set_mg(self)
 
     def load_all(self):
         all_vertices = list(self.vertices_collection.find())

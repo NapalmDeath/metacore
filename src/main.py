@@ -4,8 +4,8 @@
 # [x] Сохранение всего графа
 # [x] Загрузка из базы
 # [x] Удаление элементов
-# [] Сохранение через mg.save_entities в любой последовательности
-# [] Сохранение куска графа (через mg.save)
+# [x] Сохранение через mg.save_entities в любой последовательности
+# [x] Сохранение куска графа (через mg.save)
 # [] Алгоритмы поиска элементов
 # [] Получение части графа из базы
 # [] Визуализация
@@ -39,10 +39,12 @@ if __name__ == '__main__':
     e2 = Metaedge(name="v1_v4", source=v1, dest=v4, zhopa="azaaza")
 
     # Сохранять нужно в правильной последовательности для генерации idшников
-    mg.register(v2, v1, v3, v4, e1, e2)
+    mg.register(v1, v2, v3, v4, e1, e2)
 
-    mg.delete_entity(e1)
-    mg.delete_entity(v3)
+    mg.save_entities(e1)
 
-    print(mg.vertices)
-    print(mg.edges)
+    # mg.delete_entity(e1)
+    # mg.delete_entity(v3)
+    #
+    # print(mg.vertices)
+    # print(mg.edges)
