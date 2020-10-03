@@ -100,13 +100,13 @@ class MetagraphPersist(Metagraph):
 
         for vertices in [leaf_vertices, other_vertices]:
             for v in vertices:
-                m = Metavertex.load(v, self)
+                m = Metavertex.deserialize(v, self)
                 self.vertices[m.id] = m
 
         edges = list(self.edges_collection.find())
 
         for edge in edges:
-            e = Metaedge.load(edge, self)
+            e = Metaedge.deserialize(edge, self)
             self.edges[e.id] = e
 
 

@@ -82,7 +82,7 @@ class Metaedge(BaseMetaedge, PersistableMGEntity):
         }
 
     @staticmethod
-    def load(json: MetaedgeType, mg: Metagraph) -> Metaedge:
+    def deserialize(json: MetaedgeType, mg: Metagraph) -> Metaedge:
         source = mg.vertices[json["source"]]
         dest = mg.vertices[json["dest"]]
 
@@ -90,5 +90,24 @@ class Metaedge(BaseMetaedge, PersistableMGEntity):
         me.set_id(json["_id"])
 
         me.set_dirty(False)
+
+        return me
+
+    @staticmethod
+    def load(mg: MetagraphPersist, _id: ObjectId) -> Metaedge:
+        from core.entities.vertex import Metavertex
+
+        if mg.edges.get(_id, None):
+            return cast(Metaedge, mg.edges[_id])
+
+        edge_data: MetaedgeType = mg.edges_collection.find_one({
+            "_id": _id
+        })
+
+        Metavertex.load(mg, edge_data['source'])
+        Metavertex.load(mg, edge_data['dest'])
+
+        me = Metaedge.deserialize(edge_data, mg)
+        mg.edges[_id] = me
 
         return me

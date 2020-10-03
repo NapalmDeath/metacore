@@ -1,3 +1,6 @@
+from bson import ObjectId
+
+from core.entities import Metavertex, Metaedge
 from core.metacore import Metacore, MetacoreConfig
 
 if __name__ == '__main__':
@@ -7,7 +10,11 @@ if __name__ == '__main__':
     ))
 
     mg = metacore.initialize()
-    mg.load_all()
-    print([v.id for v in mg.vertices.values()], [e.id for e in mg.edges.values()])
+
+    Metavertex.load(mg, ObjectId("5f78550c91fef687ac76bb06"))
+    # Metaedge.load(mg, ObjectId("5f78507b1e90eb81ac2a8006"))
+
+    # mg.load_all()
+    print([str(v) for v in mg.vertices.values()], [str(e) for e in mg.edges.values()])
 
 

@@ -3,7 +3,7 @@ from typing import List, TYPE_CHECKING, TypedDict, cast
 
 from bson import ObjectId
 
-from core.entities.common import MetagraphEntityType, MetagraphEntity, PersistableMGEntity
+from core.entities.common import MetagraphEntityType, MetagraphEntity, PersistableMGEntity, Attributes
 
 if TYPE_CHECKING:
     from core.metagraph import MetagraphPersist
@@ -15,7 +15,8 @@ class BaseMetavertex(MetagraphEntity):
     inner_edges: List[BaseMetaedge]
     outer_edges: List[BaseMetaedge]
     children: List[BaseMetavertex]
-    parent: BaseMetavertex or None
+    parents: List[BaseMetavertex]
+    attrs: Attributes
 
     def __init__(self, name: str) -> None:
         super().__init__(name)
@@ -23,19 +24,28 @@ class BaseMetavertex(MetagraphEntity):
         self.children = []
         self.inner_edges = []
         self.outer_edges = []
-        self.parent = None
+        self.parents = []
+        self.attrs = Attributes()
 
     @property
     def has_dependencies(self):
         return len(self.inner_edges) > 0 or \
                len(self.outer_edges) > 0 or \
-               len(self.children) > 0 or\
-               self.parent
+               len(self.children) > 0 or \
+               len(self.parents) > 0
+
+    @property
+    def is_leaf(self):
+        return len(self.children) == 0
 
     def add_child(self, child: BaseMetavertex):
-        child.parent = self
+        child.add_parent(self)
 
         self.children.append(child)
+
+    def add_parent(self, parent: BaseMetavertex):
+        if parent not in self.parents:
+            self.parents.append(parent)
 
     def add_edge(self, edge: BaseMetaedge):
         if self == edge.source:
@@ -53,11 +63,34 @@ class BaseMetavertex(MetagraphEntity):
         for edge in self.outer_edges:
             edge.delete()
 
+    def find_children(self, filters = {}):
+        filtered_children = []
+
+        this_children = list(filter(lambda x: x.attrs.filter(filters), self.children))
+        filtered_children.extend(this_children)
+
+        for v in this_children:
+            filtered_children.extend(v.find_children(filters))
+
+        return filtered_children
+
+    def find_parents(self, filters = {}):
+        filtered_parents = []
+
+        this_parents = list(filter(lambda x: x.attrs.filter(filters), self.parents))
+        filtered_parents.extend(this_parents)
+
+        for v in this_parents:
+            filtered_parents.extend(v.find_parents(filters))
+
+        return list(set(filtered_parents))
+
 
 class MetavertexType(TypedDict):
     _id: ObjectId
     name: str
     children: List[ObjectId]
+    parents: List[ObjectId]
     inner_edges: List[ObjectId]
     outer_edges: List[ObjectId]
 
@@ -72,6 +105,10 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         cast(Metavertex, child).set_dirty(True)
 
         super().add_child(child)
+
+    def add_parent(self, parent: BaseMetavertex):
+        self.set_dirty(True)
+        super().add_parent(parent)
 
     def add_edge(self, edge: BaseMetaedge):
         self.set_dirty(True)
@@ -97,7 +134,8 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
             "inner_edges": list(map(lambda e: e.id, self.inner_edges)),
             "outer_edges": list(map(lambda e: e.id, self.outer_edges)),
             "children": list(map(lambda c: c.id, self.children)),
-            "parent": self.parent.id if self.parent else None
+            "parents": list(map(lambda p: p.id, self.parents)),
+            "attrs": self.attrs.serialize()
         }
 
     def save(self):
@@ -114,8 +152,9 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         was_changed_dependency = is_first_save and self.has_dependencies
 
         if is_first_save:
-            if self.parent:
-                self.parent.save()
+            if self.parents:
+                for parent in self.parents:
+                    cast(Metavertex, parent).save()
 
             if self.children:
                 for child in self.children:
@@ -133,15 +172,48 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
             super().save()
 
     @staticmethod
-    def load(json: MetavertexType, mg) -> Metavertex:
+    def deserialize(json: MetavertexType, mg) -> Metavertex:
         mv = Metavertex(name=json["name"])
         mv.set_id(json["_id"])
 
         for child_id in json["children"]:
             child = mg.vertices[child_id]
             mv.add_child(child)
-            child.parent = mv
 
         mv.set_dirty(False)
+
+        return mv
+
+    # Загрузка по цепочке из базы только нужных элементов
+    @staticmethod
+    def load(mg: MetagraphPersist, _id: ObjectId) -> Metavertex:
+        from core.entities.edge import Metaedge
+
+        if mg.vertices.get(_id, None):
+            return cast(Metavertex, mg.vertices[_id])
+
+        vertex_data: MetavertexType = mg.vertices_collection.find_one({
+            "_id": _id
+        })
+
+        if vertex_data['children']:
+            for child_id in vertex_data['children']:
+                if not mg.vertices.get(child_id, None):
+                    child = Metavertex.load(mg, child_id)
+                    mg.vertices[child.id] = child
+
+        mv = Metavertex.deserialize(vertex_data, mg)
+        mg.vertices[mv.id] = mv
+
+        if vertex_data['parents']:
+            for parent_id in vertex_data['parents']:
+                if not mg.vertices.get(parent_id, None):
+                    parent = Metavertex.load(mg, parent_id)
+                    mg.vertices[parent.id] = parent
+
+        for edge_id in vertex_data['outer_edges']:
+            Metaedge.load(mg, edge_id)
+        for edge_id in vertex_data['inner_edges']:
+            Metaedge.load(mg, edge_id)
 
         return mv

@@ -6,13 +6,20 @@
 # [x] Удаление элементов
 # [x] Сохранение через mg.save_entities в любой последовательности
 # [x] Сохранение куска графа (через mg.save)
-# [] Алгоритмы поиска элементов
-# [] Получение части графа из базы
+# [x] Алгоритмы поиска элементов
+#   [x] Поиск вложенных вершин по условию
+#   [x] Поиск родительских вершин по условию
+#   [x] Проверка, является ли вершина листовой
+#   [x] Получение родительских вершин (всех, до которых можно дотянуться)
+# [x] Получение части графа из базы
 # [] Визуализация
 # [] Добавление абстракций для работы без базы / с базой
 
 # [] Создание агентов
 # [] Алгоритм запуска агентов
+
+# Доп работы:
+# Поддержка проверки схождения графа. Например, нельзя вложить родительскую вершину в дочернюю
 
 
 from core.metacore import Metacore, MetacoreConfig
@@ -32,16 +39,28 @@ if __name__ == '__main__':
     v2 = Metavertex(name="v2")
     v3 = Metavertex(name="v3")
     v4 = Metavertex(name="v4")
+    v5 = Metavertex(name="v5")
+    v6 = Metavertex(name="v6")
 
-    v1.add_child(v2)
+    # v1.add_child(v2)
+    # v2.add_child(v3)
+    # v2.add_child(v4)
+    v2.add_child(v6)
+
+    v2.attrs.a = 5
+    v2.attrs.b = 10
+
+    v3.attrs.a = 5
 
     e1 = Metaedge(name="v1_v3", source=v1, dest=v3, zhopa="azaaza")
-    e2 = Metaedge(name="v1_v4", source=v1, dest=v4, zhopa="azaaza")
+    e2 = Metaedge(name="v1_v4", source=v1, dest=v4, zhopa1x="azaaza")
+    e3 = Metaedge(name="v5_v2", source=v5, dest=v2)
 
     # Сохранять нужно в правильной последовательности для генерации idшников
-    mg.register(v1, v2, v3, v4, e1, e2)
+    mg.register(v1, v2, v3, v4, v5, v6, e1, e2, e3)
 
-    mg.save_entities(e1)
+    # mg.save_entities(e1)
+    mg.save_all()
 
     # mg.delete_entity(e1)
     # mg.delete_entity(v3)

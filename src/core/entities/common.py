@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Dict
 
 from bson import ObjectId
 from pymongo.collection import Collection
@@ -111,28 +111,27 @@ class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
 
     @staticmethod
     @abstractmethod
-    def load(json: Any, mg: Metagraph):
+    def deserialize(json: Any, mg: Metagraph):
         pass
 
 
 class Attributes(Serializable):
-    values: dict = {}
-
     def __init__(self, **kwargs) -> None:
         super().__init__()
 
         for k, v in kwargs.items():
-            setattr(self, k, v)
+            self.__dict__[k] = v
 
     @property
     def created(self) -> bool:
         return True
 
-    def __getattr__(self, item) -> Any:
-        return self.values[item]
+    @property
+    def values(self):
+        return self.__dict__
 
-    def __setattr__(self, key, value):
-        self.values[key] = value
+    def filter(self, filters: Dict):
+        return all(self.values.get(k, None) == v for k, v in filters.items())
 
     def serialize(self) -> dict:
         return self.values
