@@ -13,10 +13,15 @@
 #   [x] Получение родительских вершин (всех, до которых можно дотянуться)
 # [x] Получение части графа из базы
 # [] Визуализация
-# [] Добавление абстракций для работы без базы / с базой
+# [x] Добавление абстракций для работы без базы / с базой
 
-# [] Создание агентов
-# [] Алгоритм запуска агентов
+# [x] Создание агентов
+# [x] Алгоритм запуска агентов
+# [x] Алгоритмы обработки
+#   [x] Сегментация
+#   [x] Предобработка
+#   [] Морфология
+#   [] Синтаксис
 
 # Доп работы:
 # Поддержка проверки схождения графа. Например, нельзя вложить родительскую вершину в дочернюю
@@ -24,6 +29,7 @@
 
 from core.metacore import Metacore, MetacoreConfig
 from core.entities import Metaedge, Metavertex
+from core.utils import visualize
 
 if __name__ == '__main__':
     metacore = Metacore(MetacoreConfig(
@@ -44,7 +50,7 @@ if __name__ == '__main__':
 
     # v1.add_child(v2)
     # v2.add_child(v3)
-    # v2.add_child(v4)
+    v2.add_child(v4)
     v2.add_child(v6)
 
     v2.attrs.a = 5
@@ -59,8 +65,10 @@ if __name__ == '__main__':
     # Сохранять нужно в правильной последовательности для генерации idшников
     mg.register(v1, v2, v3, v4, v5, v6, e1, e2, e3)
 
+    visualize(mg, 'img.png')
+
     # mg.save_entities(e1)
-    mg.save_all()
+    # mg.save_all()
 
     # mg.delete_entity(e1)
     # mg.delete_entity(v3)

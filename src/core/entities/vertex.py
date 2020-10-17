@@ -18,14 +18,14 @@ class BaseMetavertex(MetagraphEntity):
     parents: List[BaseMetavertex]
     attrs: Attributes
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, attrs: Attributes = Attributes()) -> None:
         super().__init__(name)
 
         self.children = []
         self.inner_edges = []
         self.outer_edges = []
         self.parents = []
-        self.attrs = Attributes()
+        self.attrs = attrs
 
     @property
     def has_dependencies(self):
@@ -33,6 +33,10 @@ class BaseMetavertex(MetagraphEntity):
                len(self.outer_edges) > 0 or \
                len(self.children) > 0 or \
                len(self.parents) > 0
+
+    @property
+    def is_root(self):
+        return len(self.parents) == 0
 
     @property
     def is_leaf(self):
@@ -63,7 +67,7 @@ class BaseMetavertex(MetagraphEntity):
         for edge in self.outer_edges:
             edge.delete()
 
-    def find_children(self, filters = {}):
+    def find_children(self, filters={}):
         filtered_children = []
 
         this_children = list(filter(lambda x: x.attrs.filter(filters), self.children))
@@ -74,7 +78,7 @@ class BaseMetavertex(MetagraphEntity):
 
         return filtered_children
 
-    def find_parents(self, filters = {}):
+    def find_parents(self, filters={}):
         filtered_parents = []
 
         this_parents = list(filter(lambda x: x.attrs.filter(filters), self.parents))

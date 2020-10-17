@@ -130,6 +130,9 @@ class Attributes(Serializable):
     def values(self):
         return self.__dict__
 
+    def get(self, name, default=None):
+        return self.__dict__.get(name, default)
+
     def filter(self, filters: Dict):
         return all(self.values.get(k, None) == v for k, v in filters.items())
 
