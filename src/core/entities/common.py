@@ -130,6 +130,9 @@ class Attributes(Serializable):
     def values(self):
         return self.__dict__
 
+    def set(self, name, value):
+        self.__dict__[name] = value
+
     def get(self, name, default=None):
         return self.__dict__.get(name, default)
 

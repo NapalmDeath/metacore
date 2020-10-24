@@ -9,7 +9,7 @@ from nltk.corpus import stopwords
 from core.agents.agent import BaseMetaAgent
 from core.entities.vertex import BaseMetavertex, Metavertex
 from core.metagraph import MetagraphPersist
-from text.utils import TextLevel
+from text.utils import TextLevel, MVAttr
 
 stop_words = set(stopwords.words('english'))
 
@@ -40,14 +40,14 @@ class TextPreprocessingAgent(BaseMetaAgent):
 
     def check_condition(self) -> bool:
         self.to_process = list(filter(
-            lambda v: v.attrs.level == TextLevel.sentence and v.id not in self.processed,
+            lambda v: v.attrs.get(MVAttr.level) == TextLevel.sentence and v.id not in self.processed,
             self.mg.vertices.values()
         ))
 
         return len(self.to_process) > 0
 
     def _run_vertex(self, v: BaseMetavertex) -> None:
-        text, level = v.attrs.text, v.attrs.level
+        text, level = v.attrs.get(MVAttr.text), v.attrs.get(MVAttr.level)
         processed = preprocess(text, level)
         v.attrs.processed = processed
 
