@@ -13,16 +13,12 @@ if TYPE_CHECKING:
 class BaseMetaedge(MetagraphEntity):
     entity_type = MetagraphEntityType.EDGE
 
-    attrs: Attributes
-    source: BaseMetavertex
-    dest: BaseMetavertex
-
     def __init__(self, name: str, source: BaseMetavertex, dest: BaseMetavertex, **attrs):
         super().__init__(name)
 
-        self.source = source
-        self.dest = dest
-        self.attrs = Attributes(**attrs)
+        self.source: BaseMetavertex = source
+        self.dest: BaseMetavertex = dest
+        self.attrs: Attributes = Attributes(**attrs)
 
         self.source.add_edge(self)
         self.dest.add_edge(self)
@@ -51,6 +47,7 @@ class Metaedge(BaseMetaedge, PersistableMGEntity):
         if self.mg:
             self.mg.save_entities(cast('Metavertex', self.source), cast('Metavertex', self.dest))
             self.delete_from(self.mg.edges_collection)
+            self.mg.drop_entity(self)
 
     def save(self):
         if not self.dirty:

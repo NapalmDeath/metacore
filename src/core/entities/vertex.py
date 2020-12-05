@@ -12,20 +12,15 @@ if TYPE_CHECKING:
 
 class BaseMetavertex(MetagraphEntity):
     entity_type = MetagraphEntityType.VERTEX
-    inner_edges: List[BaseMetaedge]
-    outer_edges: List[BaseMetaedge]
-    children: List[BaseMetavertex]
-    parents: List[BaseMetavertex]
-    attrs: Attributes
 
     def __init__(self, name: str, attrs: Attributes = Attributes()) -> None:
         super().__init__(name)
 
-        self.children = []
-        self.inner_edges = []
-        self.outer_edges = []
-        self.parents = []
-        self.attrs = attrs
+        self.children: List[BaseMetavertex] = []
+        self.inner_edges: List[BaseMetaedge] = []
+        self.outer_edges: List[BaseMetaedge] = []
+        self.parents: List[BaseMetavertex] = []
+        self.attrs: Attributes = attrs
 
     @property
     def has_dependencies(self):
@@ -43,13 +38,16 @@ class BaseMetavertex(MetagraphEntity):
         return len(self.children) == 0
 
     def add_child(self, child: BaseMetavertex):
-        child.add_parent(self)
+        child._add_parent(self)
 
         self.children.append(child)
 
-    def add_parent(self, parent: BaseMetavertex):
+    def _add_parent(self, parent: BaseMetavertex):
         if parent not in self.parents:
             self.parents.append(parent)
+
+    def _drop_parent(self, mv: BaseMetavertex):
+        self.parents = list(filter(lambda x: x.id != mv.id, self.parents))
 
     def add_edge(self, edge: BaseMetaedge):
         if self == edge.source:
@@ -61,11 +59,20 @@ class BaseMetavertex(MetagraphEntity):
         self.inner_edges = list(filter(lambda e: e.id != edge.id, self.inner_edges))
         self.outer_edges = list(filter(lambda e: e.id != edge.id, self.outer_edges))
 
+    def drop_child(self, mv: BaseMetavertex):
+        self.children = list(filter(lambda x: x.id != mv.id, self.children))
+        mv._drop_parent(self)
+
     def delete(self):
+        # Удаляем все связи этой вершины
         for edge in self.inner_edges:
             edge.delete()
         for edge in self.outer_edges:
             edge.delete()
+        for parent in self.parents:
+            parent.drop_child(self)
+        for child in self.children:
+            child.delete()
 
     def find_children(self, filters={}):
         filtered_children = []
@@ -110,9 +117,14 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
 
         super().add_child(child)
 
-    def add_parent(self, parent: BaseMetavertex):
+    def _add_parent(self, parent: BaseMetavertex):
         self.set_dirty(True)
-        super().add_parent(parent)
+        super()._add_parent(parent)
+
+    def _drop_parent(self, parent: BaseMetavertex):
+        self.set_dirty(True)
+        super()._drop_parent(parent)
+        # self.save()
 
     def add_edge(self, edge: BaseMetaedge):
         self.set_dirty(True)
@@ -122,15 +134,34 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         self.set_dirty(True)
         super().drop_edge(edge)
 
+    def drop_child(self, mv: BaseMetavertex):
+        # Возможен случай "висячего узла",
+        # v1.add_child(v2), v1.save() -> v1, v2 в БД,
+        # v1.drop_child(v2), v1.save() -> v2 в БД хранит ссылку на v1
+        # Можно тут сохранять, можно переложить на mg.save, так как у v2 проставится флаг dirty.
+        has_child = mv.id in map(lambda x: x.id, self.children)
+        super().drop_child(mv)
+        self.set_dirty(has_child)
+
     def delete(self):
+        # Удаляем все связи этой вершины
         edges_to_delete = [*self.inner_edges, *self.outer_edges]
 
         for edge in edges_to_delete:
             edge.delete()
 
+        for parent in self.parents:
+            parent.drop_child(self)
+            cast(Metavertex, parent).save()
+
+        for child in self.children:
+            child.delete()
+
         if self.mg:
+            # Удаляем вершину из метаграфа
             self.delete_many_from(self.mg.edges_collection, *map(lambda e: e.id, edges_to_delete))
             self.delete_from(self.mg.vertices_collection)
+            self.mg.drop_entity(self)
 
     def serialize(self):
         return {
@@ -143,36 +174,49 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         }
 
     def save(self):
-        if not self.dirty:
+        if not self.dirty or not self.mg:
             return
 
-        is_first_save = not self.created
-
+        print('save', self)
         super().save()
         self.set_dirty(False)
 
         # В случае, если меняем двойную связь (туда-обратно), например, родительская и дочерняя вершина
         # После сохранения дочерней, сохраняем родительскую и пересохраняем дочернюю
-        was_changed_dependency = is_first_save and self.has_dependencies
+        was_changed_dependency = False # is_first_save and self.has_dependencies
 
-        if is_first_save:
-            if self.parents:
-                for parent in self.parents:
-                    cast(Metavertex, parent).save()
+        if self.parents:
+            for parent in self.parents:
+                mv = cast(Metavertex, parent)
+                # В случае, если меняем двойную связь (туда-обратно), например, родительская и дочерняя вершина
+                # После сохранения дочерней, сохраняем родительскую и пересохраняем дочернюю
+                if not mv.created:
+                    was_changed_dependency = True
+                mv.save()
 
-            if self.children:
-                for child in self.children:
-                    cast(Metavertex, child).save()
+        if self.children:
+            for child in self.children:
+                mv = cast(Metavertex, child)
+                if not mv.created:
+                    was_changed_dependency = True
+                mv.save()
 
-            if self.inner_edges:
-                for e in self.inner_edges:
-                    cast("Metaedge", e).save()
+        if self.inner_edges:
+            for e in self.inner_edges:
+                me = cast("Metaedge", e)
+                if not me.created:
+                    was_changed_dependency = True
+                me.save()
 
-            if self.outer_edges:
-                for e in self.outer_edges:
-                    cast("Metaedge", e).save()
+        if self.outer_edges:
+            for e in self.outer_edges:
+                me = cast("Metaedge", e)
+                if not me.created:
+                    was_changed_dependency = True
+                me.save()
 
         if was_changed_dependency:
+            print('save', self)
             super().save()
 
     @staticmethod

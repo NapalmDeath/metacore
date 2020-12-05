@@ -10,14 +10,11 @@ class MetacoreConfig(TypedDict):
 
 
 class Metacore:
-    db: MongoClient = None
-    config: MetacoreConfig
-    metagraph: MetagraphPersist
-    client: MongoClient
-
     def __init__(self, config: MetacoreConfig):
         self.config = config
-        pass
+        self.db: MongoClient or None = None
+        self.metagraph: MetagraphPersist or None = None
+        self.client: MongoClient or None = None
 
     def initialize(self) -> MetagraphPersist:
         self.client = MongoClient(self.config["db_connect_url"])

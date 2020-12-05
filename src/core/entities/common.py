@@ -21,9 +21,7 @@ class EdgeType(Enum):
 
 
 class MetagraphEntity:
-    temp_id: ObjectId
     entity_type: MetagraphEntityType
-    name: str
 
     @property
     def id(self) -> ObjectId:
@@ -33,8 +31,8 @@ class MetagraphEntity:
 
     def __init__(self, name: str = '') -> None:
         super().__init__()
-        self.temp_id = ObjectId()
-        self.name = name
+        self.temp_id: ObjectId = ObjectId()
+        self.name: str = name
 
     def delete(self):
         pass
@@ -50,13 +48,11 @@ class Serializable(metaclass=ABCMeta):
 
 
 class Persistable(Serializable, metaclass=ABCMeta):
-    _id: ObjectId or None = None
-    dirty: bool
-    collection: Collection
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.dirty = True
+        self.dirty: bool = True
+        self._id: ObjectId or None = None
+        self.collection: Collection = None
 
     @property
     def created(self) -> bool:
@@ -95,7 +91,9 @@ class Persistable(Serializable, metaclass=ABCMeta):
 
 
 class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
-    mg: MetagraphPersist = None
+    def __init__(self, name: str = '') -> None:
+        super().__init__(name)
+        self.mg: MetagraphPersist or None = None
 
     def set_mg(self, mg: MetagraphPersist):
         self.mg = mg
@@ -106,8 +104,9 @@ class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
         return self._id or self.temp_id
 
     def save(self):
-        super().save()
+        result = super().save()
         self.mg.drop_temp_entity(self)
+        return result
 
     @staticmethod
     @abstractmethod

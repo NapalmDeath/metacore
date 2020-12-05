@@ -15,13 +15,10 @@ if TYPE_CHECKING:
 
 
 class Metagraph:
-    vertices: Dict[ObjectId, BaseMetavertex]
-    edges: Dict[ObjectId, BaseMetaedge]
-
     def __init__(self) -> None:
         super().__init__()
-        self.vertices = {}
-        self.edges = {}
+        self.vertices: Dict[ObjectId, BaseMetavertex] = {}
+        self.edges: Dict[ObjectId, BaseMetaedge] = {}
 
     def save_entities(self, *entities: MetagraphEntity):
         for e in entities:
@@ -34,24 +31,24 @@ class Metagraph:
         collection = self._get_entity_collection(entity.entity_type)
         collection[entity.id] = entity
 
-    def delete_entity(self, entity: MetagraphEntity):
+    def drop_entity(self, entity: MetagraphEntity):
         collection = self._get_entity_collection(entity.entity_type)
-        del collection[entity.id]
+        if entity.id in collection:
+            del collection[entity.id]
+
+    def delete_entity(self, entity: MetagraphEntity):
+        self.drop_entity(entity)
 
         entity.delete()
 
 
 class MetagraphPersist(Metagraph):
-    db: MongoClient
-    vertices_collection: Collection
-    edges_collection: Collection
-
     def __init__(self, db: MongoClient):
         super(MetagraphPersist, self).__init__()
 
-        self.db = db
-        self.vertices_collection = db.vertices
-        self.edges_collection = db.edges
+        self.db: MongoClient = db
+        self.vertices_collection: Collection = db.vertices
+        self.edges_collection: Collection = db.edges
 
     def save_entities(self, *entities: PersistableMGEntity):
         for e in entities:
@@ -84,7 +81,7 @@ class MetagraphPersist(Metagraph):
             self.save_entity(cast(PersistableMGEntity, e))
 
     def delete_entity(self, entity: PersistableMGEntity):
-        super().delete_entity(entity)
+        entity.delete()
 
     def register(self, *entities: MetagraphEntity):
         for entity in entities:
@@ -108,5 +105,3 @@ class MetagraphPersist(Metagraph):
         for edge in edges:
             e = Metaedge.deserialize(edge, self)
             self.edges[e.id] = e
-
-
