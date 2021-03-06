@@ -47,6 +47,7 @@ class BaseMetavertex(MetagraphEntity):
             self.parents.append(parent)
 
     def _drop_parent(self, mv: BaseMetavertex):
+        print('drop_parent', mv, 'from', self)
         self.parents = list(filter(lambda x: x.id != mv.id, self.parents))
 
     def add_edge(self, edge: BaseMetaedge):
@@ -60,6 +61,7 @@ class BaseMetavertex(MetagraphEntity):
         self.outer_edges = list(filter(lambda e: e.id != edge.id, self.outer_edges))
 
     def drop_child(self, mv: BaseMetavertex):
+        print('drop_child', mv, 'from', self)
         self.children = list(filter(lambda x: x.id != mv.id, self.children))
         mv._drop_parent(self)
 
@@ -144,6 +146,7 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         self.set_dirty(has_child)
 
     def delete(self):
+        print('delete', self)
         # Удаляем все связи этой вершины
         edges_to_delete = [*self.inner_edges, *self.outer_edges]
 
@@ -159,9 +162,11 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
 
         if self.mg:
             # Удаляем вершину из метаграфа
-            self.delete_many_from(self.mg.edges_collection, *map(lambda e: e.id, edges_to_delete))
+            # self.delete_many_from(self.mg.edges_collection, *map(lambda e: e.id, edges_to_delete))
             self.delete_from(self.mg.vertices_collection)
             self.mg.drop_entity(self)
+
+        print('return from delete', self)
 
     def serialize(self):
         return {
@@ -174,10 +179,10 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
         }
 
     def save(self):
+        print('try save', self)
         if not self.dirty or not self.mg:
             return
 
-        print('save', self)
         super().save()
         self.set_dirty(False)
 
@@ -216,8 +221,9 @@ class Metavertex(BaseMetavertex, PersistableMGEntity):
                 me.save()
 
         if was_changed_dependency:
-            print('save', self)
             super().save()
+
+        print('return from save', self)
 
     @staticmethod
     def deserialize(json: MetavertexType, mg) -> Metavertex:

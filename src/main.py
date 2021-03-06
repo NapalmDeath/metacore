@@ -43,56 +43,44 @@ if __name__ == '__main__':
 
     metacore.drop()
 
+    v0 = Metavertex(name="v0")
     v1 = Metavertex(name="v1")
-    # v2 = Metavertex(name="v2")
-    # v3 = Metavertex(name="v3")
-    # v4 = Metavertex(name="v4")
+    v2 = Metavertex(name="v2")
+    v3 = Metavertex(name="v3")
     # v5 = Metavertex(name="v5")
     # v6 = Metavertex(name="v6")
 
-    # v1.add_child(v2)
+    v0.add_child(v1)
+    v1.add_child(v3)
     # v2.add_child(v3)
-    # v2.add_child(v4)
     # v2.add_child(v6)
     #
     # v2.attrs.a = 5
     # v2.attrs.b = 10
     # v3.attrs.a = 5
     #
-    # e1 = Metaedge(name="v1_v3", source=v1, dest=v3, attr1="some_attribute")
+    e1 = Metaedge(name="v1_v2", source=v1, dest=v2)
+    e2 = Metaedge(name="v3_v2", source=v3, dest=v2)
     # e2 = Metaedge(name="v1_v4", source=v1, dest=v4, attr2="some_attr")
     # e3 = Metaedge(name="v5_v2", source=v5, dest=v2)
 
     # Сохранять нужно в правильной последовательности для генерации idшников
     # mg.register(v1, v2, v3, v4, v5, v6, e1, e2, e3)
-    mg.register(v1)
+    mg.register(v0, v1, v2, v3, e1, e2)
+    mg.save_all()
 
     # v1.save()
 
     # mg.load_all()
 
-    v2 = Metavertex(name="v2")
-    # v3 = Metavertex(name="v3")
-    mg.register(v2)
+    print('---TEST---')
 
-    v2.save()
-
-    # mg.save_all()
-    mg.load_all()
-
-    v1.add_child(v2)
-
-    # v2.add_child(v3)
-
-    print('---check---')
-
-    v2.save()
+    v1.delete()
 
     # v1.drop_child(v2)
     # v1.save()
 
     # mg.save_entities(e1)
-    # mg.save_all()
 
     # mg.delete_entity(e1)
     # mg.delete_entity(v2)

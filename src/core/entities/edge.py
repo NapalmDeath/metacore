@@ -24,7 +24,9 @@ class BaseMetaedge(MetagraphEntity):
         self.dest.add_edge(self)
 
     def delete(self):
+        print('drop source edge', self, 'from', self.source)
         self.source.drop_edge(self)
+        print('drop dest edge', self, 'from', self.dest)
         self.dest.drop_edge(self)
 
 
@@ -42,6 +44,7 @@ class Metaedge(BaseMetaedge, PersistableMGEntity):
         self.collection = self.mg.edges_collection
 
     def delete(self):
+        print('delete me', self)
         super(Metaedge, self).delete()
 
         if self.mg:
@@ -49,26 +52,28 @@ class Metaedge(BaseMetaedge, PersistableMGEntity):
             self.delete_from(self.mg.edges_collection)
             self.mg.drop_entity(self)
 
+        print('return from delete', self)
+
     def save(self):
+        print('try save', self)
         if not self.dirty:
             return
-
-        is_first_save = not self.created
 
         super().save()
         self.set_dirty(False)
 
-        if is_first_save:
-            source = cast("Metavertex", self.source)
-            dest = cast("Metavertex", self.dest)
+        source = cast("Metavertex", self.source)
+        dest = cast("Metavertex", self.dest)
 
-            was_changed_dependencies = not source.created or not dest.created
+        was_changed_dependencies = not source.created or not dest.created
 
-            source.save()
-            dest.save()
+        source.save()
+        dest.save()
 
-            if was_changed_dependencies:
-                super().save()
+        if was_changed_dependencies:
+            super().save()
+
+        print('return from save', self)
 
     def serialize(self) -> dict:
         return {

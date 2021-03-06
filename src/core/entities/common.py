@@ -59,6 +59,7 @@ class Persistable(Serializable, metaclass=ABCMeta):
         return self._id is not None
 
     def set_dirty(self, dirty: bool = True) -> None:
+        print('set_dirty', dirty, self)
         self.dirty = dirty
 
     def set_id(self, _id: ObjectId):
@@ -104,6 +105,7 @@ class PersistableMGEntity(MetagraphEntity, Persistable, metaclass=ABCMeta):
         return self._id or self.temp_id
 
     def save(self):
+        print('super.save()', self)
         result = super().save()
         self.mg.drop_temp_entity(self)
         return result
